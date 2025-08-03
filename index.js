@@ -1,4 +1,12 @@
-// index.js
+// Store your Atlas connection string here
+const MONGODB_URI = 'your_mongodb_atlas_connection_string'; 
+
+// Database Connection
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB Atlas'))
+  .catch(err => console.error('Could not connect to MongoDB Atlas...', err))
+
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -16,7 +24,7 @@ app.use(express.static('public'));
 app.use(cookieParser());
 app.set('view engine', 'ejs');
 
-// Database Connection
+// Database Connection - The options are removed to fix the warnings
 mongoose.connect('mongodb://localhost:27017/secretsDB')
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('Could not connect to MongoDB...', err));
@@ -45,6 +53,11 @@ userSchema.pre('save', async function(next) {
 const User = mongoose.model('User', userSchema);
 
 // Routes
+// Root URL redirect
+app.get('/', (req, res) => {
+  res.redirect('/register');
+});
+
 // Registration Page
 app.get('/register', (req, res) => {
   res.render('register');
@@ -131,15 +144,6 @@ app.get('/logout', (req, res) => {
   res.redirect('/login');
 });
 
-// index.js
-
-// ... all other routes and middleware ...
-
 app.listen(PORT, () => {
   console.log(`Server is running on http://localhost:${PORT}`);
-});
-
-// Root URL redirect
-app.get('/', (req, res) => {
-  res.redirect('/register');
 });
