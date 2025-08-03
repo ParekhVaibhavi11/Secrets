@@ -1,12 +1,4 @@
-// Store your Atlas connection string here
-const MONGODB_URI = 'your_mongodb_atlas_connection_string'; 
-
-// Database Connection
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB Atlas'))
-  .catch(err => console.error('Could not connect to MongoDB Atlas...', err))
-
-
+// index.js
 const express = require('express');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
@@ -16,7 +8,7 @@ const cookieParser = require('cookie-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const JWT_SECRET = 'your-very-secret-jwt-key'; // CHANGE THIS IN PRODUCTION!
+const JWT_SECRET = '2efb8cbba563127265cb6d0bef0a76262962033ffd2626301f5bf5724e5bb873'; // CHANGE THIS IN PRODUCTION!
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -24,10 +16,26 @@ app.use(express.static('public'));
 app.use(cookieParser());
 app.set('view engine', 'ejs');
 
-// Database Connection - The options are removed to fix the warnings
-mongoose.connect('mongodb://localhost:27017/secretsDB')
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Could not connect to MongoDB...', err));
+// Replace this entire block with your correct MongoDB Atlas connection string
+//
+// const MONGODB_URI = 'your_mongodb_atlas_connection_string'; // Replace with your string
+// mongoose.connect(MONGODB_URI)
+//   .then(() => console.log('Connected to MongoDB Atlas'))
+//   .catch(err => console.error('Could not connect to MongoDB Atlas...', err));
+//
+// You also had this duplicate local connection which should be removed
+// mongoose.connect('mongodb://localhost:27017/secretsDB')
+//   .then(() => console.log('Connected to MongoDB'))
+//   .catch(err => console.error('Could not connect to MongoDB...', err));
+
+
+// This is the correct, final database connection block
+const MONGODB_URI = 'mongodb+srv://vaibhaviparekh2812:10092005@secrets.westjam.mongodb.net/?retryWrites=true&w=majority&appName=secrets'; // PASTE YOUR ATLAS STRING HERE
+
+mongoose.connect(MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB Atlas'))
+  .catch(err => console.error('Could not connect to MongoDB Atlas...', err));
+
 
 // User Schema
 const userSchema = new mongoose.Schema({
