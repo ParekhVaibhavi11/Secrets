@@ -76,17 +76,16 @@ app.post('/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // Password validation
     const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{6,8}$/;
     if (!passwordRegex.test(password)) {
-      return res.status(400).send('Password must be 6-8 characters, include a lowercase letter, an uppercase letter, and a number.');
+      return res.render('register', { error: 'Password must be 6-8 characters, include a lowercase letter, an uppercase letter, and a number.' });
     }
 
     const newUser = new User({ name, email, password });
     await newUser.save();
     res.redirect('/login');
   } catch (err) {
-    res.status(500).send('Error registering user.');
+    res.render('register', { error: 'Error registering user. Please try again.' });
   }
 });
 
@@ -102,18 +101,16 @@ app.post('/login', async (req, res) => {
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(400).send('Invalid email or password.');
+      return res.render('login', { error: 'Invalid email or password.' });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(400).send('Invalid email or password.');
+      return res.render('login', { error: 'Invalid email or password.' });
     }
 
-    // Token-based authentication
     const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
 
-    // Secure, HttpOnly cookie
     res.cookie('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -122,7 +119,7 @@ app.post('/login', async (req, res) => {
 
     res.redirect('/secrets');
   } catch (err) {
-    res.status(500).send('Error logging in.');
+    res.render('login', { error: 'Error logging in. Please try again.' });
   }
 });
 

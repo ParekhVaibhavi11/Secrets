@@ -80,3 +80,12 @@ a {
 a:hover {
     text-decoration: underline;
 }
+
+/* public/styles.css */
+/* ... existing styles ... */
+
+.error-message {
+    color: red;
+    font-size: 14px;
+    margin-bottom: 15px;
+}
