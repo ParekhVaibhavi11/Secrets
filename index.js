@@ -1,154 +1,153 @@
-// index.js
+
+
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
+const ejs = require('ejs');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
-const cookieParser = require('cookie-parser');
+const session = require('express-session');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
-const JWT_SECRET = '2efb8cbba563127265cb6d0bef0a76262962033ffd2626301f5bf5724e5bb873'; // CHANGE THIS IN PRODUCTION!
-
-// Middleware
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
-app.use(cookieParser());
+app.use(express.static("public"));
 app.set('view engine', 'ejs');
+app.use(bodyParser.urlencoded({ extended: true }));
 
-// Replace this entire block with your correct MongoDB Atlas connection string
-//
-// const MONGODB_URI = 'your_mongodb_atlas_connection_string'; // Replace with your string
-// mongoose.connect(MONGODB_URI)
-//   .then(() => console.log('Connected to MongoDB Atlas'))
-//   .catch(err => console.error('Could not connect to MongoDB Atlas...', err));
-//
-// You also had this duplicate local connection which should be removed
-// mongoose.connect('mongodb://localhost:27017/secretsDB')
-//   .then(() => console.log('Connected to MongoDB'))
-//   .catch(err => console.error('Could not connect to MongoDB...', err));
+app.use(session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        httpOnly: true, 
+        secure: process.env.NODE_ENV === 'production', 
+        maxAge: 3600000 
+    }
+}));
 
+// MongoDB Connection
+mongoose.connect(process.env.MONGO_URI, { useNewUrlParser: true, useUnifiedTopology: true });
 
-// This is the correct, final database connection block
-const MONGODB_URI = 'mongodb+srv://vaibhaviparekh2812:10092005@secrets.westjam.mongodb.net/?retryWrites=true&w=majority&appName=secrets'; // PASTE YOUR ATLAS STRING HERE
-
-mongoose.connect(MONGODB_URI)
-  .then(() => console.log('Connected to MongoDB Atlas'))
-  .catch(err => console.error('Could not connect to MongoDB Atlas...', err));
-
-
-// User Schema
+// Mongoose User Schema
 const userSchema = new mongoose.Schema({
-  name: { type: String, required: true },
-  email: {
-    type: String,
-    required: true,
-    unique: true,
-    match: [/.+@.+\..+/, 'Please enter a valid email address']
-  },
-  password: { type: String, required: true }
+    name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+        trim: true,
+        lowercase: true,
+        match: [/^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$/, 'Please enter a valid email address']
+    },
+    password: {
+        type: String,
+        required: true,
+        minlength: [6, 'Password must be at least 6 characters long']
+    }
 });
 
-// Password Hashing Middleware
-userSchema.pre('save', async function(next) {
-  if (this.isModified('password')) {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-  }
-  next();
+const User = mongoose.model("User", userSchema);
+
+
+const isAuthenticated = (req, res, next) => {
+    if (req.session.user) {
+        next();
+    } else {
+        res.redirect('/login');
+    }
+};
+
+
+app.get("/", (req, res) => {
+    res.render("login");
 });
 
-const User = mongoose.model('User', userSchema);
-
-// Routes
-// Root URL redirect
-app.get('/', (req, res) => {
-  res.redirect('/register');
+app.get("/register", (req, res) => {
+    res.render("register");
 });
 
-// Registration Page
-app.get('/register', (req, res) => {
-  res.render('register');
-});
-
-// Registration Logic
-app.post('/register', async (req, res) => {
-  try {
+app.post("/register", async (req, res) => {
     const { name, email, password } = req.body;
+    try {
+       
+        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{6,8}/.test(password)) {
+            return res.render("register", { error: "Password must be 6-8 characters, with at least one uppercase letter, one lowercase letter, and one number." });
+        }
+        
+       
+        const hashedPassword = await bcrypt.hash(password, 10); // 10 is the salt rounds
 
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{6,8}$/;
-    if (!passwordRegex.test(password)) {
-      return res.render('register', { error: 'Password must be 6-8 characters, include a lowercase letter, an uppercase letter, and a number.' });
+        const newUser = new User({
+            name,
+            email,
+            password: hashedPassword
+        });
+
+        await newUser.save();
+        res.redirect("/login");
+    } catch (err) {
+        console.log(err);
+        let errorMessage = "An error occurred during registration.";
+        if (err.code === 11000) {
+            errorMessage = "This email is already registered.";
+        }
+        res.render("register", { error: errorMessage });
     }
-
-    const newUser = new User({ name, email, password });
-    await newUser.save();
-    res.redirect('/login');
-  } catch (err) {
-    res.render('register', { error: 'Error registering user. Please try again.' });
-  }
 });
 
-// Login Page
-app.get('/login', (req, res) => {
-  res.render('login');
+app.get("/login", (req, res) => {
+    res.render("login");
 });
 
-// Login Logic
-app.post('/login', async (req, res) => {
-  try {
+app.post("/login", async (req, res) => {
     const { email, password } = req.body;
-    const user = await User.findOne({ email });
+    try {
+        const foundUser = await User.findOne({ email });
 
-    if (!user) {
-      return res.render('login', { error: 'Invalid email or password.' });
+        if (!foundUser) {
+            return res.render("login", { error: "Invalid email or password." });
+        }
+
+        const isMatch = await bcrypt.compare(password, foundUser.password);
+
+        if (isMatch) {
+            
+            req.session.user = {
+                id: foundUser._id,
+                name: foundUser.name,
+                email: foundUser.email
+            };
+           
+
+            res.redirect("/secrets");
+        } else {
+            res.render("login", { error: "Invalid email or password." });
+        }
+
+    } catch (err) {
+        console.log(err);
+        res.render("login", { error: "An error occurred during login." });
     }
+});
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.render('login', { error: 'Invalid email or password.' });
-    }
+app.get("/secrets", isAuthenticated, (req, res) => {
+    res.render("secrets", { user: req.session.user });
+});
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '1h' });
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict'
+app.get("/logout", (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            console.log(err);
+            return res.redirect("/secrets");
+        }
+        res.clearCookie('connect.sid'); 
+        res.redirect("/login");
     });
-
-    res.redirect('/secrets');
-  } catch (err) {
-    res.render('login', { error: 'Error logging in. Please try again.' });
-  }
 });
 
-// Protected Route
-app.get('/secrets', async (req, res) => {
-  try {
-    const token = req.cookies.token;
-    if (!token) {
-      return res.redirect('/login');
-    }
-
-    const decoded = jwt.verify(token, JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
-    if (!user) {
-      return res.redirect('/login');
-    }
-
-    res.render('secrets', { user });
-  } catch (err) {
-    res.redirect('/login');
-  }
-});
-
-// Logout Route
-app.get('/logout', (req, res) => {
-  res.clearCookie('token');
-  res.redirect('/login');
-});
-
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(process.env.PORT || 3000, () => {
+    console.log(`Server started on port http://localhost:${process.env.PORT || 3000}`);
 });

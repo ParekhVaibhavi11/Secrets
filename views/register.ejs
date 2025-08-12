@@ -1,41 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
     <title>Register</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/css/styles.css">
 </head>
 <body>
-    <div class="container">
-        <h2>Create an Account</h2>
-         <% if (locals.error) { %>
-            <p class="error-message"><%= error %></p>
-        <% } %>
-        <form action="/register" method="POST" onsubmit="setTimeout(clearForm, 1000)">
-            <input type="text" name="name" placeholder="Name" required>
-            <input type="email" name="email" placeholder="Email" required>
-            <div class="password-container">
-                <input type="password" id="password" name="password" placeholder="Password" required>
-                <span class="show-password" onclick="togglePassword()">Show</span>
-            </div>
-            <button type="submit">Register</button>
-        </form>
-        <p>Already have an account? <a href="/login">Login here</a></p>
+    <div class="container mt-5">
+        <div class="card p-4">
+            <h1 class="text-center">Register</h1>
+            <% if (typeof error !== 'undefined' && error) { %>
+                <div class="alert alert-danger"><%= error %></div>
+            <% } %>
+            <form action="/register" method="POST">
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" class="form-control" name="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" class="form-control" name="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-group">
+                        <input type="password" class="form-control" name="password" id="password" required>
+                        <div class="input-group-append">
+                            <span class="input-group-text toggle-password" onclick="togglePasswordVisibility('password')">
+                                <i class="fa fa-eye" id="password-toggle-icon"></i>
+                            </span>
+                        </div>
+                    </div>
+                    <small class="form-text text-muted">Password must be 6-8 characters, with an uppercase letter, a lowercase letter, and a number.</small>
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">Register</button>
+            </form>
+            <hr>
+            <p class="text-center">Already have an account? <a href="/login">Login here</a></p>
+        </div>
     </div>
+    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
     <script>
-        function clearForm() {
-            document.querySelector('form').reset();
-        }
-
-        function togglePassword() {
-            const passwordField = document.getElementById('password');
-            const showBtn = document.querySelector('.show-password');
-            if (passwordField.type === 'password') {
-                passwordField.type = 'text';
-                showBtn.textContent = 'Hide';
+        function togglePasswordVisibility(id) {
+            const passwordInput = document.getElementById(id);
+            const icon = document.getElementById(`${id}-toggle-icon`);
+            if (passwordInput.type === "password") {
+                passwordInput.type = "text";
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
             } else {
-                passwordField.type = 'password';
-                showBtn.textContent = 'Show';
+                passwordInput.type = "password";
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
             }
         }
     </script>
